@@ -1,4 +1,4 @@
-# Bhujal AI — 24hr Prototype (SIH26197)
+# Bhujal AI — 24hr Prototype (SIH26200)
 
 Matches the deck's 5-component technical approach and 4-stage offline-first
 methodology, scoped down to what's buildable and demoable in 24 hours on one laptop.
