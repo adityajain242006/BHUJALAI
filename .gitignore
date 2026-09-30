@@ -1,0 +1,24 @@
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node / Vite (reinstall with `npm install` in client/webapp)
+node_modules/
+dist/
+
+# Flutter build output (rebuild with `flutter build web` in client/bhujal_app)
+client/bhujal_app/build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Third-party figshare dataset (~110 MB, CC BY 4.0). Re-download per data/rural/README.md:
+# https://doi.org/10.6084/m9.figshare.29293877.v3 -> unzip into data/rural/qc_gwl_india/
+data/rural/qc_gwl_india/
+data/rural/*.zip

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Bhujal AI — Borewell Site Recommendation</title>
+<!--
+  Zero-toolchain fallback demo, built as a safety net while the Flutter SDK installs
+  (see ../main.dart.template for the intended Flutter client). Same data contract:
+  reads GET /tile/bengaluru once, caches to localStorage, and every subsequent
+  interaction reads only the cached JSON — demonstrating the same offline-first claim
+  the Flutter client makes, just via a browser instead of a Flutter build.
+-->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  html, body { margin:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; }
+  #map { position:absolute; inset:0; }
+  #topbar { position:absolute; top:0; left:0; right:0; z-index:1000; background:#fff; padding:10px 14px;
+             box-shadow:0 1px 4px rgba(0,0,0,.15); display:flex; align-items:center; justify-content:space-between; }
+  #topbar h1 { font-size:15px; margin:0; color:#222; }
+  #topbar h1 span { color:#E85D2A; }
+  #syncBtn { background:#E85D2A; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-size:13px; cursor:pointer; }
+  #syncBtn:disabled { background:#ccc; }
+  #status { font-size:12px; color:#666; margin-right:10px; }
+  #banner { position:absolute; top:52px; left:12px; right:12px; z-index:999; background:#fff3e0; border:1px solid #ffb066;
+             padding:10px 12px; border-radius:6px; font-size:13px; display:none; }
+  #panel { position:absolute; bottom:0; left:0; right:0; z-index:1000; background:#fff; padding:16px;
+            box-shadow:0 -2px 10px rgba(0,0,0,.15); display:none; font-size:14px; }
+  #panel .decision { display:inline-block; padding:4px 12px; border-radius:14px; color:#fff; font-weight:600; font-size:13px; }
+  #panel .row { margin:6px 0; color:#333; }
+  #panel .close { float:right; cursor:pointer; color:#999; font-size:20px; line-height:1; }
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <h1>Bhujal <span>AI</span> — Borewell Site Recommendation</h1>
+    <div style="display:flex; align-items:center;">
+      <span id="status">Not synced</span>
+      <button id="syncBtn" onclick="sync()">Sync tile</button>
+    </div>
+  </div>
+  <div id="banner">Tap "Sync tile" once (needs network) to download the district's scored grid. After that, every tap below reads the cached data — no network calls.</div>
+  <div id="map"></div>
+  <div id="panel">
+    <span class="close" onclick="document.getElementById('panel').style.display='none'">&times;</span>
+    <div id="panelBody"></div>
+  </div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const API_BASE = 'http://localhost:8000';
+let cells = [];
+let markers = [];
+
+const map = L.map('map').setView([12.97, 77.60], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+function decisionColor(d) {
+  return { DRILL: '#2e7d32', SURVEY: '#f9a825', AVOID: '#c62828', INSUFFICIENT_DATA: '#9e9e9e' }[d] || '#9e9e9e';
+}
+
+function renderCells() {
+  markers.forEach(m => map.removeLayer(m));
+  markers = [];
+  for (const c of cells) {
+    const m = L.circleMarker([c.lat, c.lon], {
+      radius: 5, color: decisionColor(c.decision), fillColor: decisionColor(c.decision),
+      fillOpacity: 0.6, weight: 1,
+    }).addTo(map);
+    m.on('click', () => showPanel(c));
+    markers.push(m);
+  }
+}
+
+function showPanel(c) {
+  document.getElementById('panelBody').innerHTML = `
+    <span class="decision" style="background:${decisionColor(c.decision)}">${c.decision}</span>
+    <span style="margin-left:10px;color:#666;">confidence: ${c.confidence}</span>
+    <div class="row"><b>Success probability:</b> ${(c.success_probability*100).toFixed(0)}%</div>
+    <div class="row"><b>Expected depth:</b> ${c.depth_m.toFixed(1)} m</div>
+    <div class="row"><b>Expected yield:</b> ${c.yield_lpm.toFixed(1)} L/min</div>
+    <div class="row"><b>Groundwater status (INGRES):</b> ${c.block_category}</div>
+  `;
+  document.getElementById('panel').style.display = 'block';
+}
+
+function applyTileJson(text) {
+  const data = JSON.parse(text);
+  cells = data.cells;
+  renderCells();
+  document.getElementById('status').textContent = `Synced — ${cells.length} cells cached (offline-ready)`;
+  document.getElementById('banner').style.display = 'none';
+}
+
+async function sync() {
+  document.getElementById('syncBtn').disabled = true;
+  document.getElementById('status').textContent = 'Syncing...';
+  try {
+    const resp = await fetch(`${API_BASE}/tile/bengaluru`);
+    const text = await resp.text();
+    try { localStorage.setItem('tile_bengaluru', text); } catch (e) {}
+    applyTileJson(text);
+  } catch (e) {
+    document.getElementById('status').textContent = 'Sync failed (is the API running on :8000?)';
+  } finally {
+    document.getElementById('syncBtn').disabled = false;
+  }
+}
+
+// on load, try cached copy first (this is the "offline after sync" path)
+(function init() {
+  try {
+    const cached = localStorage.getItem('tile_bengaluru');
+    if (cached) { applyTileJson(cached); return; }
+  } catch (e) {}
+  document.getElementById('banner').style.display = 'block';
+})();
+</script>
+</body>
+</html>

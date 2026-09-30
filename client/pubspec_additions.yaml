@@ -1,0 +1,5 @@
+# Merge into bhujal_app/pubspec.yaml under `dependencies:` after `flutter create`.
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  http: ^1.2.2
+  shared_preferences: ^2.3.2
